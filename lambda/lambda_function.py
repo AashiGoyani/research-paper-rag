@@ -61,17 +61,93 @@ def lambda_handler(event, context):
         
         elif action == 'compare_papers':
             indices = body.get('paper_indices', [])
-            p1, p2 = papers[indices[0]], papers[indices[1]]
-            prompt = f"Compare these two research papers:\n\nPaper 1:\nTitle: {p1['title_clean']}\nAbstract: {p1.get('abstract', '')[:400]}\n\nPaper 2:\nTitle: {p2['title_clean']}\nAbstract: {p2.get('abstract', '')[:400]}\n\nProvide:\n1. Main similarities\n2. Key differences\n3. Which is better for beginners vs experts\n4. Your recommendation"
+            
+            # Build comparison for all selected papers
+            papers_text = ""
+            for i, idx in enumerate(indices, 1):
+                paper = papers[idx]
+                papers_text += f"\n\nPaper {i}:\nTitle: {paper['title_clean']}\nAbstract: {paper.get('abstract', '')[:400]}"
+            
+            prompt = f"""Compare these {len(indices)} research papers:
+
+        {papers_text}
+
+        Provide a comprehensive comparison that includes:
+        1. **Main Similarities** - What do all these papers have in common?
+        2. **Key Differences** - How does each paper differ from the others?
+        3. **Strengths & Weaknesses** - What are the unique strengths of each paper?
+        4. **Best For** - Which paper is best for beginners vs experts?
+        5. **Reading Order** - In what order should someone read these papers?
+
+        Make it clear and structured."""
+            
             comparison = call_gemini_api(prompt)
             return {'statusCode': 200, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'comparison': comparison})}
-        
+
+
         elif action == 'rag_search':
-            indices = body.get('relevant_papers', [])[:5]
-            context = "\n---\n".join([f"Paper {i+1}:\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}" for i, idx in enumerate(indices)])
-            prompt = f"Based on these research papers from our database:\n\n{context}\n\nUser question: {body.get('query')}\n\nProvide a comprehensive answer that:\n1. Directly answers the question\n2. Cites specific papers\n3. Explains key concepts\n4. Suggests which papers to read first"
+            query = body.get('query', '')
+            
+            # If user provided specific paper indices, use those
+            if 'relevant_papers' in body and body['relevant_papers']:
+                indices = body.get('relevant_papers', [])[:5]
+            else:
+                # Otherwise, search all papers for relevant ones based on query keywords
+                query_lower = query.lower()
+                query_words = set(query_lower.split())
+                
+                # Find papers matching query keywords
+                relevant = []
+                for idx, paper in enumerate(papers):
+                    title = paper['title_clean'].lower()
+                    abstract = paper.get('abstract', '').lower()
+                    
+                    # Check if paper matches query keywords
+                    matches = sum(1 for word in query_words if word in title or word in abstract)
+                    if matches > 0:
+                        relevant.append((idx, matches))
+                
+                # Sort by relevance and take top 5
+                relevant.sort(key=lambda x: x[1], reverse=True)
+                indices = [idx for idx, _ in relevant[:5]]
+            
+            # Build context from relevant papers
+            if not indices:
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'answer': 'I couldn\'t find any papers relevant to your question. Try different keywords or search for papers first!'})
+                }
+            
+            context = "\n---\n".join([
+                f"Paper {i+1}:\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
+                for i, idx in enumerate(indices)
+            ])
+            
+            prompt = f"""Based on these research papers from our database:
+
+        {context}
+
+        User question: {query}
+
+        Provide a comprehensive answer that:
+        1. Directly answers the question
+        2. Cites specific papers by their titles
+        3. Explains key concepts clearly
+        4. Recommends which papers to read for more details
+
+        Be helpful and informative!"""
+            
             answer = call_gemini_api(prompt)
-            return {'statusCode': 200, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'answer': answer})}
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({
+                    'answer': answer,
+                    'papers_used': [papers[idx]['title_clean'] for idx in indices]
+                })
+            }   
         
         return {'statusCode': 400, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Invalid action'})}
     except Exception as e:
