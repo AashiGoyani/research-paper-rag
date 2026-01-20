@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Research Paper Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1e1e1e;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #e0e0e0;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: #2d2d2d;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+        }
+        .panel-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            background: #3c3c3c;
+            color: #e0e0e0;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #0d9488;
+        }
+        .search-results {
+            max-height: 350px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        .paper-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #3c3c3c;
+        }
+        .paper-item:hover {
+            border-color: #0d9488;
+            background: #454545;
+        }
+        .paper-item.selected {
+            background: #10b981;
+            border-color: #059669;
+            border-width: 3px;
+        }
+        .paper-title {
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 3px;
+            font-size: 14px;
+        }
+        .paper-meta {
+            font-size: 0.85em;
+            color: #999;
+        }
+        .selected-box {
+            margin-top: 10px;
+            padding: 12px;
+            background: #3c3c3c;
+            border-radius: 8px;
+            border: 2px solid #0d9488;
+        }
+        .selected-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin-top: 8px;
+            background: #2d2d2d;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #e0e0e0;
+        }
+        .remove-btn {
+            padding: 4px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        .chat-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .action-btn {
+            padding: 10px;
+            background: white;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .action-btn:hover {
+            background: #f0f0f0;
+        }
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #2d2d2d;
+        }
+        .message {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        .user-message {
+            background: #14b8a6;
+            margin-left: 20%;
+            border: 2px solid #0d9488;
+            color: white;
+        }
+        .ai-message {
+            background: #3c3c3c;
+            border: none;
+            margin-right: 20%;
+            color: #e0e0e0;
+        }
+        .ai-message h1, .ai-message h2, .ai-message h3 {
+            color: #e0e0e0;
+            margin-top: 12px;
+            margin-bottom: 8px;
+        }
+        .ai-message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .ai-message table th,
+        .ai-message table td {
+            border: 1px solid #555;
+            padding: 8px;
+            text-align: left;
+        }
+        .ai-message table th {
+            background: #2d2d2d;
+            font-weight: bold;
+        }
+        .ai-message strong {
+            color: #fff;
+        }
+        .loading-message {
+            background: #5a4a2a;
+            border: 2px solid #ffc107;
+            text-align: center;
+            font-style: italic;
+            color: #ffd54f;
+        }
+        .chat-input-container {
+            display: flex;
+            gap: 8px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #3c3c3c;
+            color: #e0e0e0;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: #0d9488;
+        }
+        .send-btn {
+            padding: 12px 25px;
+            background: white;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .send-btn:hover {
+            background: #f0f0f0;
+        }
+        .send-btn:disabled {
+            background: #555;
+            color: #999;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .chat-actions {
+                grid-template-columns: 1fr;
+            }
+            .user-message, .ai-message {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Research Paper Assistant</h1>
+        <div class="grid">
+            <div class="panel">
+                <div class="panel-title">Search Papers</div>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search papers..."/>
+                <div class="search-results" id="searchResults"></div>
+                <div id="selectedList"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">AI Assistant</div>
+                <div class="chat-container">
+                    <div class="chat-actions">
+                        <button class="action-btn" onclick="explainPaper()">Explain Paper</button>
+                        <button class="action-btn" onclick="comparePapers()">Compare Papers</button>
+                        <button class="action-btn" onclick="enableChat()">Ask Questions</button>
+                    </div>
+                    <div class="chat-box" id="chatBox">
+                        <div class="ai-message">Hi! I'm Research Mate, your AI research companion. Search for papers on the left to get started.</div>                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chatInput" class="chat-input" placeholder="Ask anything..." disabled/>
+                        <button id="sendBtn" class="send-btn" onclick="sendMsg()" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+const API='https://rltmzfk7k4.execute-api.us-east-1.amazonaws.com/prod/chat';
+let papers=[],selected=[];
+async function loadPapers(){
+try{
+const r=await fetch('papers_lookup_rag.json');
+papers=await r.json();
+console.log('Loaded '+papers.length+' papers');
+}catch(e){
+console.error(e);
+addMsg('Error loading papers','ai');
+}
+}
+function search(){
+const q=document.getElementById('searchInput').value.toLowerCase().trim();
+const div=document.getElementById('searchResults');
+if(q.length<2){div.innerHTML='';return;}
+const res=papers.filter(p=>p.title.toLowerCase().includes(q)).slice(0,20);
+if(res.length===0){div.innerHTML='<div style="padding:15px;text-align:center;color:#999;">No papers found</div>';return;}
+div.innerHTML=res.map(p=>'<div class="paper-item '+(selected.includes(p.index)?'selected':'')+'" onclick="toggle('+p.index+')"><div class="paper-title">'+p.title+'</div><div class="paper-meta">'+p.year+' | '+p.categories+'</div></div>').join('');
+}
+function toggle(i){
+const idx=selected.indexOf(i);
+if(idx>-1)selected.splice(idx,1);
+else selected.push(i);
+updateSelected();
+search();
+}
+function updateSelected(){
+const div=document.getElementById('selectedList');
+if(selected.length===0){div.innerHTML='';return;}
+const html=selected.map(i=>{
+const p=papers[i];
+return '<div class="selected-item"><div>'+p.title+'</div><button class="remove-btn" onclick="toggle('+i+')">Remove</button></div>';
+}).join('');
+div.innerHTML='<div class="selected-box"><strong>Selected ('+selected.length+')</strong>'+html+'</div>';
+}
+function addMsg(txt,type){
+const box=document.getElementById('chatBox');
+const msg=document.createElement('div');
+msg.className='message '+type+'-message';
+if(type==='ai' && typeof marked !== 'undefined'){
+msg.innerHTML=marked.parse(txt);
+}else{
+msg.textContent=txt;
+}
+box.appendChild(msg);
+box.scrollTop=box.scrollHeight;
+}
+function removeLoading(){
+const msgs=document.getElementsByClassName('loading-message');
+if(msgs.length>0)msgs[0].remove();
+}
+async function explainPaper(){
+if(selected.length===0){alert('Select a paper first');return;}
+const p=papers[selected[0]];
+addMsg('Explain: '+p.title,'user');
+addMsg('Analyzing...','loading');
+try{
+const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'explain_paper',paper_index:selected[0]})});
+const d=await r.json();
+removeLoading();
+addMsg(d.explanation||'Error: '+(d.error||'Unknown'),'ai');
+}catch(e){
+removeLoading();
+addMsg('Error: '+e.message,'ai');
+}
+}
+async function comparePapers(){
+if(selected.length<2){alert('Select 2 papers');return;}
+const p1=papers[selected[0]],p2=papers[selected[1]];
+addMsg('Compare: '+p1.title+' vs '+p2.title,'user');
+addMsg('Comparing...','loading');
+try{
+const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:[selected[0],selected[1]]})});
+const d=await r.json();
+removeLoading();
+addMsg(d.comparison||'Error: '+(d.error||'Unknown'),'ai');
+}catch(e){
+removeLoading();
+addMsg('Error: '+e.message,'ai');
+}
+}
+function enableChat(){
+document.getElementById('chatInput').disabled=false;
+document.getElementById('sendBtn').disabled=false;
+document.getElementById('chatInput').focus();
+addMsg('Chat enabled!','ai');
+}
+async function sendMsg(){
+const inp=document.getElementById('chatInput');
+const q=inp.value.trim();
+if(!q)return;
+addMsg(q,'user');
+inp.value='';
+addMsg('Searching...','loading');
+try{
+const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'rag_search',query:q,relevant_papers:selected.slice(0,5)})});
+const d=await r.json();
+removeLoading();
+addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
+}catch(e){
+removeLoading();
+addMsg('Error: '+e.message,'ai');
+}
+}
+document.getElementById('searchInput').addEventListener('input',search);
+document.getElementById('chatInput').addEventListener('keypress',function(e){if(e.key==='Enter'&&!this.disabled)sendMsg();});
+loadPapers();
+    </script>
+</body>
+</html>
