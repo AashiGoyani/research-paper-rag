@@ -92,39 +92,35 @@ def lambda_handler(event, context):
             if 'relevant_papers' in body and body['relevant_papers']:
                 indices = body.get('relevant_papers', [])[:5]
             else:
-                # Otherwise, search all papers for relevant ones based on query keywords
+                # Search all papers for relevant ones
                 query_lower = query.lower()
                 query_words = set(query_lower.split())
                 
-                # Find papers matching query keywords
                 relevant = []
                 for idx, paper in enumerate(papers):
                     title = paper['title_clean'].lower()
                     abstract = paper.get('abstract', '').lower()
-                    
-                    # Check if paper matches query keywords
                     matches = sum(1 for word in query_words if word in title or word in abstract)
                     if matches > 0:
                         relevant.append((idx, matches))
                 
-                # Sort by relevance and take top 5
                 relevant.sort(key=lambda x: x[1], reverse=True)
                 indices = [idx for idx, _ in relevant[:5]]
             
-            # Build context from relevant papers
             if not indices:
                 return {
                     'statusCode': 200,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'answer': 'I couldn\'t find any papers relevant to your question. Try different keywords or search for papers first!'})
+                    'body': json.dumps({'answer': 'I couldn\'t find papers relevant to your question. Try different keywords!'})
                 }
             
+            # Build context with paper details
             context = "\n---\n".join([
-                f"Paper {i+1}:\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
+                f"Paper {i+1} (Index: {idx}):\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
                 for i, idx in enumerate(indices)
             ])
             
-            prompt = f"""Based on these research papers from our database:
+            prompt = f"""Based on these research papers:
 
         {context}
 
@@ -132,22 +128,33 @@ def lambda_handler(event, context):
 
         Provide a comprehensive answer that:
         1. Directly answers the question
-        2. Cites specific papers by their titles
-        3. Explains key concepts clearly
-        4. Recommends which papers to read for more details
+        2. Lists the relevant papers with their titles
+        3. For each paper mentioned, format it as: **[Paper Title]** (Index: XX) where XX is the paper index number
+        4. Explains key concepts clearly
+        5. Recommends which papers to read
 
-        Be helpful and informative!"""
+        Example format:
+        - **Convolutional Neural Networks for Classification** (Index: 114)
+        - **Deep Learning Approaches** (Index: 68)
+
+        Be helpful and include paper indices!"""
             
             answer = call_gemini_api(prompt)
+            
+            # Also return paper details so frontend can make them clickable
+            paper_details = [
+                {'index': idx, 'title': papers[idx]['title_clean']}
+                for idx in indices
+            ]
             
             return {
                 'statusCode': 200,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 'body': json.dumps({
                     'answer': answer,
-                    'papers_used': [papers[idx]['title_clean'] for idx in indices]
+                    'papers': paper_details
                 })
-            }   
+            }
         
         return {'statusCode': 400, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': 'Invalid action'})}
     except Exception as e:

@@ -180,16 +180,19 @@
             border-collapse: collapse;
             width: 100%;
             margin: 10px 0;
+            background: #2d2d2d;
         }
         .ai-message table th,
         .ai-message table td {
             border: 1px solid #555;
-            padding: 8px;
+            padding: 12px;
             text-align: left;
+            background: #3c3c3c;
         }
         .ai-message table th {
             background: #2d2d2d;
             font-weight: bold;
+            color: #fff;
         }
         .ai-message strong {
             color: #fff;
@@ -375,7 +378,6 @@ addMsg(q,'user');
 inp.value='';
 addMsg('Searching...','loading');
 try{
-// Send selected papers if any, otherwise Lambda will search automatically
 const payload = {action:'rag_search',query:q};
 if(selected.length > 0) {
     payload.relevant_papers = selected.slice(0,5);
@@ -383,7 +385,19 @@ if(selected.length > 0) {
 const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
 const d=await r.json();
 removeLoading();
+
+// Add main answer
 addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
+
+// If papers were returned, add clickable links
+if(d.papers && d.papers.length > 0) {
+    let paperLinks = '\n\n**📄 Referenced Papers (click to select):**\n';
+    d.papers.forEach(p => {
+        paperLinks += `\n• ${p.title} - <a href="#" onclick="toggle(${p.index}); search(); return false;" style="color:#10b981;">Select this paper</a>`;
+    });
+    addMsg(paperLinks, 'ai');
+}
+
 }catch(e){
 removeLoading();
 addMsg('Error: '+e.message,'ai');
