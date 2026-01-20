@@ -1,0 +1,29 @@
+# Python virtual environment
+bin/
+lib/
+lib64/
+include/
+pyvenv.cfg
+scripts/
+share/
+*.pyc
+__pycache__/
+
+# Data files
+data/
+*.json
+papers_lookup*
+*.csv
+*.zip
+*.tar.gz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+
