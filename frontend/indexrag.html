@@ -346,12 +346,12 @@ addMsg('Error: '+e.message,'ai');
 }
 }
 async function comparePapers(){
-if(selected.length<2){alert('Select 2 papers');return;}
-const p1=papers[selected[0]],p2=papers[selected[1]];
-addMsg('Compare: '+p1.title+' vs '+p2.title,'user');
+if(selected.length<2){alert('Select at least 2 papers');return;}
+const titles = selected.map(i => papers[i].title).join(', ');
+addMsg('Compare: '+titles,'user');
 addMsg('Comparing...','loading');
 try{
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:[selected[0],selected[1]]})});
+const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:selected})});
 const d=await r.json();
 removeLoading();
 addMsg(d.comparison||'Error: '+(d.error||'Unknown'),'ai');
@@ -364,8 +364,9 @@ function enableChat(){
 document.getElementById('chatInput').disabled=false;
 document.getElementById('sendBtn').disabled=false;
 document.getElementById('chatInput').focus();
-addMsg('Chat enabled!','ai');
+addMsg('Ask me anything about research papers! I\'ll search our database and provide insights.','ai');
 }
+
 async function sendMsg(){
 const inp=document.getElementById('chatInput');
 const q=inp.value.trim();
@@ -374,7 +375,12 @@ addMsg(q,'user');
 inp.value='';
 addMsg('Searching...','loading');
 try{
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'rag_search',query:q,relevant_papers:selected.slice(0,5)})});
+// Send selected papers if any, otherwise Lambda will search automatically
+const payload = {action:'rag_search',query:q};
+if(selected.length > 0) {
+    payload.relevant_papers = selected.slice(0,5);
+}
+const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
 const d=await r.json();
 removeLoading();
 addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
