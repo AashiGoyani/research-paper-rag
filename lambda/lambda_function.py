@@ -155,3 +155,4 @@ def lambda_handler(event, context):
         print(f"Error: {e}")
         print(traceback.format_exc())
         return {'statusCode': 500, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': str(e)})}
+# Force update
