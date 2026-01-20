@@ -22,7 +22,7 @@ jobs:
     
     - name: Deploy Frontend to S3
       run: |
-        aws s3 cp frontend/indexrag.html s3://research-paper-rec/indexrag.html --cache-control max-age=0
+        aws s3 cp frontend/indexrag.html s3://paper-recommender-frontend-2025/indexrag.html --cache-control max-age=0
         echo "Frontend deployed to S3"
     
     - name: Package Lambda function
@@ -41,4 +41,4 @@ jobs:
     - name: Deployment Summary
       run: |
         echo "Deployment Complete!"
-        echo "Frontend: https://research-paper-rec.s3.amazonaws.com/indexrag.html"
+        echo "Frontend: http://paper-recommender-frontend-2025.s3-website-us-east-1.amazonaws.com/indexrag.html"
