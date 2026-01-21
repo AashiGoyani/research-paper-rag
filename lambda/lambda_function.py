@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import urllib.request
+import numpy as np 
 
 s3 = boto3.client('s3')
 papers_cache = None
@@ -52,7 +53,6 @@ def call_gemini_api(prompt):
                 retry_delay *= 2
                 continue
             else:
-                # User-friendly error message
                 if e.code == 503:
                     raise Exception("The AI service is busy right now. Please wait a moment and try again!")
                 elif e.code == 429:
@@ -67,6 +67,31 @@ def call_gemini_api(prompt):
                 continue
             else:
                 raise Exception("Unable to reach AI service. Please check your connection and try again.")
+
+def get_embedding(text):
+    api_key = os.environ.get('GOOGLE_API_KEY')
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={api_key}'
+    
+    data = json.dumps({
+        'content': {
+            'parts': [{'text': text}]
+        }
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    
+    with urllib.request.urlopen(req, timeout=30) as response:
+        result = json.loads(response.read())
+        return np.array(result['embedding']['values'])
+
+def semantic_search(query_embedding, paper_embeddings, top_k=10):
+    similarities = np.dot(paper_embeddings, query_embedding) / (
+        np.linalg.norm(paper_embeddings, axis=1) * np.linalg.norm(query_embedding)
+    )
+    
+    top_indices = np.argsort(similarities)[-top_k:][::-1]
+    
+    return top_indices.tolist(), similarities[top_indices].tolist()
 
 def lambda_handler(event, context):
     try:
@@ -84,7 +109,6 @@ def lambda_handler(event, context):
         elif action == 'compare_papers':
             indices = body.get('paper_indices', [])
             
-            # Build comparison for all selected papers
             papers_text = ""
             for i, idx in enumerate(indices, 1):
                 paper = papers[idx]
@@ -106,28 +130,30 @@ def lambda_handler(event, context):
             comparison = call_gemini_api(prompt)
             return {'statusCode': 200, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'comparison': comparison})}
 
-
         elif action == 'rag_search':
             query = body.get('query', '')
             
-            # If user provided specific paper indices, use those
+            if not query:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Query is required'})
+                }
+            
             if 'relevant_papers' in body and body['relevant_papers']:
                 indices = body.get('relevant_papers', [])[:5]
+                scores = [1.0] * len(indices)
             else:
-                # Search all papers for relevant ones
-                query_lower = query.lower()
-                query_words = set(query_lower.split())
+                print("Loading embeddings from S3...")
+                bucket = 'research-paper-rec'
+                embeddings_obj = s3.get_object(Bucket=bucket, Key='data/embeddings/paper_embeddings_10k.npy')
+                paper_embeddings = np.load(embeddings_obj['Body'])
                 
-                relevant = []
-                for idx, paper in enumerate(papers):
-                    title = paper['title_clean'].lower()
-                    abstract = paper.get('abstract', '').lower()
-                    matches = sum(1 for word in query_words if word in title or word in abstract)
-                    if matches > 0:
-                        relevant.append((idx, matches))
+                print("Getting query embedding...")
+                query_embedding = get_embedding(query)
                 
-                relevant.sort(key=lambda x: x[1], reverse=True)
-                indices = [idx for idx, _ in relevant[:5]]
+                print("Performing semantic search...")
+                indices, scores = semantic_search(query_embedding, paper_embeddings, top_k=10)
             
             if not indices:
                 return {
@@ -136,10 +162,9 @@ def lambda_handler(event, context):
                     'body': json.dumps({'answer': 'I couldn\'t find papers relevant to your question. Try different keywords!'})
                 }
             
-            # Build context WITHOUT index numbers
             context = "\n---\n".join([
-                f"Paper {i+1}:\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
-                for i, idx in enumerate(indices)
+                f"Paper {i+1} (Relevance: {scores[i]:.2f}):\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
+                for i, idx in enumerate(indices[:5])
             ])
             
             prompt = f"""Based on these research papers:
@@ -158,10 +183,13 @@ def lambda_handler(event, context):
             
             answer = call_gemini_api(prompt)
             
-            # Return paper details for frontend to create links
             paper_details = [
-                {'index': idx, 'title': papers[idx]['title_clean']}
-                for idx in indices
+                {
+                    'index': idx, 
+                    'title': papers[idx]['title_clean'],
+                    'score': float(scores[i])
+                }
+                for i, idx in enumerate(indices[:5])
             ]
             
             return {
@@ -179,4 +207,3 @@ def lambda_handler(event, context):
         print(f"Error: {e}")
         print(traceback.format_exc())
         return {'statusCode': 500, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'error': str(e)})}
-# Force update
