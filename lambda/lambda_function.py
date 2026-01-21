@@ -114,9 +114,9 @@ def lambda_handler(event, context):
                     'body': json.dumps({'answer': 'I couldn\'t find papers relevant to your question. Try different keywords!'})
                 }
             
-            # Build context with paper details
+            # Build context WITHOUT index numbers
             context = "\n---\n".join([
-                f"Paper {i+1} (Index: {idx}):\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
+                f"Paper {i+1}:\nTitle: {papers[idx]['title_clean']}\nAbstract: {papers[idx].get('abstract', '')[:300]}"
                 for i, idx in enumerate(indices)
             ])
             
@@ -128,20 +128,15 @@ def lambda_handler(event, context):
 
         Provide a comprehensive answer that:
         1. Directly answers the question
-        2. Lists the relevant papers with their titles
-        3. For each paper mentioned, format it as: **[Paper Title]** (Index: XX) where XX is the paper index number
-        4. Explains key concepts clearly
-        5. Recommends which papers to read
+        2. Lists relevant papers with their titles in bold like: **Paper Title Here**
+        3. Explains key concepts clearly
+        4. Do NOT include any index numbers or paper IDs in your response
 
-        Example format:
-        - **Convolutional Neural Networks for Classification** (Index: 114)
-        - **Deep Learning Approaches** (Index: 68)
-
-        Be helpful and include paper indices!"""
+        Be helpful and informative!"""
             
             answer = call_gemini_api(prompt)
             
-            # Also return paper details so frontend can make them clickable
+            # Return paper details for frontend to create links
             paper_details = [
                 {'index': idx, 'title': papers[idx]['title_clean']}
                 for idx in indices

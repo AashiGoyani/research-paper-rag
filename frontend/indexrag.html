@@ -399,13 +399,39 @@
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const d=await r.json();
         removeLoading();
+
+        // Add main answer
         addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
+
+        // If papers were returned, add clickable links separately
+        if(d.papers && d.papers.length > 0) {
+            let paperLinks = '\n\n---\n\n**📚 Referenced Papers:**\n\n';
+            d.papers.forEach((p, i) => {
+                const searchUrl = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(p.title);
+                paperLinks += `${i+1}. **${p.title}**\n   [📄 View on Google Scholar](${searchUrl}) | [✅ Select Paper](#) \n\n`;
+            });
+            addMsg(paperLinks, 'ai');
+            
+            // Make the select links functional
+            setTimeout(() => {
+                document.querySelectorAll('.ai-message a[href="#"]').forEach((link, i) => {
+                    if(i < d.papers.length) {
+                        link.onclick = (e) => {
+                            e.preventDefault();
+                            toggle(d.papers[i].index);
+                            search();
+                            addMsg('✅ Selected: ' + d.papers[i].title, 'ai');
+                        };
+                    }
+                });
+            }, 100);
+        }
+
         }catch(e){
         removeLoading();
         addMsg('Error: '+e.message,'ai');
         }
         }
-
         document.getElementById('searchInput').addEventListener('input',search);
         document.getElementById('chatInput').addEventListener('keypress',function(e){if(e.key==='Enter'&&!this.disabled)sendMsg();});
         loadPapers();
