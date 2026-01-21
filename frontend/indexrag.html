@@ -282,147 +282,133 @@
         </div>
     </div>
     <script>
-const API='https://rltmzfk7k4.execute-api.us-east-1.amazonaws.com/prod/chat';
-let papers=[],selected=[];
-async function loadPapers(){
-try{
-const r=await fetch('papers_lookup_rag.json');
-papers=await r.json();
-console.log('Loaded '+papers.length+' papers');
-}catch(e){
-console.error(e);
-addMsg('Error loading papers','ai');
-}
-}
-function updateSelected(){
-const div=document.getElementById('selectedList');
-if(selected.length===0){div.innerHTML='';return;}
-const html=selected.map(i=>{
-const p=papers[i];
-const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(p.title)}`;
-return `<div class="selected-item">
-    <div style="flex:1;">
-        <div style="margin-bottom:4px;">${p.title}</div>
-        <a href="${searchUrl}" target="_blank" style="color:#10b981; font-size:12px; text-decoration:underline;">📄 Search on Google Scholar</a>
-    </div>
-    <button class="remove-btn" onclick="toggle(${i})">Remove</button>
-</div>`;
-}).join('');
-div.innerHTML='<div class="selected-box"><strong>Selected ('+selected.length+')</strong>'+html+'</div>';
-}
-function toggle(i){
-const idx=selected.indexOf(i);
-if(idx>-1)selected.splice(idx,1);
-else selected.push(i);
-updateSelected();
-search();
-}
-function updateSelected(){
-const div=document.getElementById('selectedList');
-if(selected.length===0){div.innerHTML='';return;}
-const html=selected.map(i=>{
-const p=papers[i];
-const searchUrl = `https://scholar.google.com/scholar?q=${encodeURIComponent(p.title)}`;
-return `<div class="selected-item">
-    <div style="flex:1;">
-        <div style="margin-bottom:4px;">${p.title}</div>
-        <a href="${searchUrl}" target="_blank" style="color:#10b981; font-size:12px; text-decoration:underline;">📄 Search on Google Scholar</a>
-    </div>
-    <button class="remove-btn" onclick="toggle(${i})">Remove</button>
-</div>`;
-}).join('');
-div.innerHTML='<div class="selected-box"><strong>Selected ('+selected.length+')</strong>'+html+'</div>';
-}
-function addMsg(txt,type){
-const box=document.getElementById('chatBox');
-const msg=document.createElement('div');
-msg.className='message '+type+'-message';
-if(type==='ai' && typeof marked !== 'undefined'){
-msg.innerHTML=marked.parse(txt);
-}else{
-msg.textContent=txt;
-}
-box.appendChild(msg);
-box.scrollTop=box.scrollHeight;
-}
-function removeLoading(){
-const msgs=document.getElementsByClassName('loading-message');
-if(msgs.length>0)msgs[0].remove();
-}
-async function explainPaper(){
-if(selected.length===0){alert('Select a paper first');return;}
-const p=papers[selected[0]];
-addMsg('Explain: '+p.title,'user');
-addMsg('Analyzing...','loading');
-try{
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'explain_paper',paper_index:selected[0]})});
-const d=await r.json();
-removeLoading();
-addMsg(d.explanation||'Error: '+(d.error||'Unknown'),'ai');
-}catch(e){
-removeLoading();
-addMsg('Error: '+e.message,'ai');
-}
-}
-async function comparePapers(){
-if(selected.length<2){alert('Select at least 2 papers');return;}
-const titles = selected.map(i => papers[i].title).join(', ');
-addMsg('Compare: '+titles,'user');
-addMsg('Comparing...','loading');
-try{
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:selected})});
-const d=await r.json();
-removeLoading();
-addMsg(d.comparison||'Error: '+(d.error||'Unknown'),'ai');
-}catch(e){
-removeLoading();
-addMsg('Error: '+e.message,'ai');
-}
-}
-function enableChat(){
-document.getElementById('chatInput').disabled=false;
-document.getElementById('sendBtn').disabled=false;
-document.getElementById('chatInput').focus();
-addMsg('Ask me anything about research papers! I\'ll search our database and provide insights.','ai');
-}
+        const API='https://rltmzfk7k4.execute-api.us-east-1.amazonaws.com/prod/chat';
+        let papers=[],selected=[];
 
-async function sendMsg(){
-const inp=document.getElementById('chatInput');
-const q=inp.value.trim();
-if(!q)return;
-addMsg(q,'user');
-inp.value='';
-addMsg('Searching...','loading');
-try{
-const payload = {action:'rag_search',query:q};
-if(selected.length > 0) {
-    payload.relevant_papers = selected.slice(0,5);
-}
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-const d=await r.json();
-removeLoading();
+        async function loadPapers(){
+        try{
+        const r=await fetch('papers_lookup_rag.json');
+        papers=await r.json();
+        console.log('Loaded '+papers.length+' papers');
+        }catch(e){
+        console.error(e);
+        addMsg('Error loading papers','ai');
+        }
+        }
 
-// Add main answer
-addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
+        function search(){
+        const q=document.getElementById('searchInput').value.toLowerCase().trim();
+        const div=document.getElementById('searchResults');
+        if(q.length<2){div.innerHTML='';return;}
+        const res=papers.filter(p=>p.title.toLowerCase().includes(q)).slice(0,20);
+        if(res.length===0){div.innerHTML='<div style="padding:15px;text-align:center;color:#999;">No papers found</div>';return;}
+        div.innerHTML=res.map(p=>{
+        const searchUrl='https://scholar.google.com/scholar?q='+encodeURIComponent(p.title);
+        return '<div class="paper-item '+(selected.includes(p.index)?'selected':'')+'" onclick="toggle('+p.index+')"><div class="paper-title">'+p.title+'</div><div class="paper-meta">'+p.year+' | '+p.categories+' | <a href="'+searchUrl+'" target="_blank" onclick="event.stopPropagation();" style="color:#10b981; font-size:12px;">📄 Scholar</a></div></div>';
+        }).join('');
+        }
 
-// If papers were returned, add clickable links
-if(d.papers && d.papers.length > 0) {
-    let paperLinks = '\n\n**📄 Referenced Papers (click to select):**\n';
-    d.papers.forEach(p => {
-        paperLinks += `\n• ${p.title} - <a href="#" onclick="toggle(${p.index}); search(); return false;" style="color:#10b981;">Select this paper</a>`;
-    });
-    addMsg(paperLinks, 'ai');
-}
+        function toggle(i){
+        const idx=selected.indexOf(i);
+        if(idx>-1)selected.splice(idx,1);
+        else selected.push(i);
+        updateSelected();
+        search();
+        }
 
-}catch(e){
-removeLoading();
-addMsg('Error: '+e.message,'ai');
-}
-}
-document.getElementById('searchInput').addEventListener('input',search);
-document.getElementById('chatInput').addEventListener('keypress',function(e){if(e.key==='Enter'&&!this.disabled)sendMsg();});
-loadPapers();
+        function updateSelected(){
+        const div=document.getElementById('selectedList');
+        if(selected.length===0){div.innerHTML='';return;}
+        const html=selected.map(i=>{
+        const p=papers[i];
+        const searchUrl='https://scholar.google.com/scholar?q='+encodeURIComponent(p.title);
+        return '<div class="selected-item"><div style="flex:1;"><div style="margin-bottom:4px;">'+p.title+'</div><a href="'+searchUrl+'" target="_blank" style="color:#10b981; font-size:12px; text-decoration:underline;">📄 Search on Google Scholar</a></div><button class="remove-btn" onclick="toggle('+i+')">Remove</button></div>';
+        }).join('');
+        div.innerHTML='<div class="selected-box"><strong>Selected ('+selected.length+')</strong>'+html+'</div>';
+        }
+
+        function addMsg(txt,type){
+        const box=document.getElementById('chatBox');
+        const msg=document.createElement('div');
+        msg.className='message '+type+'-message';
+        if(type==='ai' && typeof marked !== 'undefined'){
+        msg.innerHTML=marked.parse(txt);
+        }else{
+        msg.textContent=txt;
+        }
+        box.appendChild(msg);
+        box.scrollTop=box.scrollHeight;
+        }
+
+        function removeLoading(){
+        const msgs=document.getElementsByClassName('loading-message');
+        if(msgs.length>0)msgs[0].remove();
+        }
+
+        async function explainPaper(){
+        if(selected.length===0){alert('Select a paper first');return;}
+        const p=papers[selected[0]];
+        addMsg('Explain: '+p.title,'user');
+        addMsg('Analyzing...','loading');
+        try{
+        const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'explain_paper',paper_index:selected[0]})});
+        const d=await r.json();
+        removeLoading();
+        addMsg(d.explanation||'Error: '+(d.error||'Unknown'),'ai');
+        }catch(e){
+        removeLoading();
+        addMsg('Error: '+e.message,'ai');
+        }
+        }
+
+        async function comparePapers(){
+        if(selected.length<2){alert('Select at least 2 papers');return;}
+        const titles = selected.map(i => papers[i].title).join(', ');
+        addMsg('Compare: '+titles,'user');
+        addMsg('Comparing...','loading');
+        try{
+        const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:selected})});
+        const d=await r.json();
+        removeLoading();
+        addMsg(d.comparison||'Error: '+(d.error||'Unknown'),'ai');
+        }catch(e){
+        removeLoading();
+        addMsg('Error: '+e.message,'ai');
+        }
+        }
+
+        function enableChat(){
+        document.getElementById('chatInput').disabled=false;
+        document.getElementById('sendBtn').disabled=false;
+        document.getElementById('chatInput').focus();
+        addMsg('Ask me anything about research papers!','ai');
+        }
+
+        async function sendMsg(){
+        const inp=document.getElementById('chatInput');
+        const q=inp.value.trim();
+        if(!q)return;
+        addMsg(q,'user');
+        inp.value='';
+        addMsg('Searching...','loading');
+        try{
+        const payload = {action:'rag_search',query:q};
+        if(selected.length > 0) {
+            payload.relevant_papers = selected.slice(0,5);
+        }
+        const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const d=await r.json();
+        removeLoading();
+        addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
+        }catch(e){
+        removeLoading();
+        addMsg('Error: '+e.message,'ai');
+        }
+        }
+
+        document.getElementById('searchInput').addEventListener('input',search);
+        document.getElementById('chatInput').addEventListener('keypress',function(e){if(e.key==='Enter'&&!this.disabled)sendMsg();});
+        loadPapers();
     </script>
 </body>
-</html><-e POSTGRES_USER=admin
--e Updated -->
+</html>
