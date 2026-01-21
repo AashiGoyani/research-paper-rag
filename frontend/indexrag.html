@@ -154,10 +154,10 @@
             background: #2d2d2d;
         }
         .message {
-            margin-bottom: 12px;
-            padding: 12px;
+            margin-bottom: 15px;
+            padding: 16px;
             border-radius: 8px;
-            line-height: 1.5;
+            line-height: 1.7;
             font-size: 14px;
         }
         .user-message {
@@ -171,22 +171,51 @@
             border: none;
             margin-right: 20%;
             color: #e0e0e0;
+            padding: 18px; 
+            line-height: 1.8; 
         }
         .ai-message h1, .ai-message h2, .ai-message h3 {
-            color: #e0e0e0;
-            margin-top: 12px;
-            margin-bottom: 8px;
+            color: #fff;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            padding-top: 8px;
         }
+        .ai-message h3 {
+            font-size: 1.2em;
+            border-top: 2px solid #555;
+            padding-top: 16px;
+            margin-top: 24px; 
+        }
+        .ai-message p {
+            margin-bottom: 16px; 
+        }
+
+        .ai-message ul, .ai-message ol {
+            margin-left: 20px; 
+            margin-bottom: 16px;
+            padding-left: 20px; 
+        }
+
+        .ai-message li {
+            margin-bottom: 10px; 
+            padding-left: 8px;
+        }
+
+        .ai-message strong {
+            color: #fff;
+            font-weight: 600;
+        }
+
         .ai-message table {
             border-collapse: collapse;
             width: 100%;
-            margin: 10px 0;
+            margin: 16px 0;
             background: #2d2d2d;
         }
         .ai-message table th,
         .ai-message table td {
             border: 1px solid #555;
-            padding: 12px;
+            padding: 14px;
             text-align: left;
             background: #3c3c3c;
         }
@@ -194,6 +223,18 @@
             background: #2d2d2d;
             font-weight: bold;
             color: #fff;
+        }
+
+        .ai-message hr {
+            border: none;
+            border-top: 2px solid #555;
+            margin: 24px 0; 
+        }
+        
+        .ai-message > strong:first-child {
+            display: block;
+            margin-bottom: 16px;
+            font-size: 1.1em;
         }
         .ai-message strong {
             color: #fff;
