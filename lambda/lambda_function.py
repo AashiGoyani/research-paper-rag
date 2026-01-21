@@ -21,10 +21,10 @@ def load_papers():
     return papers_cache
 
 def call_gemini_api(prompt):
+    import time
     api_key = os.environ.get('GOOGLE_API_KEY')
     
-    # CORRECT MODEL: gemini-2.0-flash
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={api_key}'
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}'
     
     data = {
         "contents": [{
@@ -32,19 +32,41 @@ def call_gemini_api(prompt):
         }]
     }
     
-    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'})
+    max_retries = 3
+    retry_delay = 2
     
-    try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            return result['candidates'][0]['content']['parts'][0]['text']
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8')
-        print(f"Gemini error {e.code}: {error_body}")
-        raise Exception(f"Gemini failed: {error_body}")
-    except Exception as e:
-        print(f"Error: {e}")
-        raise
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type': 'application/json'})
+            
+            with urllib.request.urlopen(req, timeout=30) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                return result['candidates'][0]['content']['parts'][0]['text']
+                
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8')
+            
+            if e.code in [503, 429] and attempt < max_retries - 1:
+                print(f"Retry attempt {attempt + 1}/{max_retries}")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+                continue
+            else:
+                # User-friendly error message
+                if e.code == 503:
+                    raise Exception("The AI service is busy right now. Please wait a moment and try again!")
+                elif e.code == 429:
+                    raise Exception("Too many requests. Please wait 30 seconds and try again.")
+                else:
+                    raise Exception(f"AI service error. Please try again. (Error code: {e.code})")
+                
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                retry_delay *= 2
+                continue
+            else:
+                raise Exception("Unable to reach AI service. Please check your connection and try again.")
 
 def lambda_handler(event, context):
     try:

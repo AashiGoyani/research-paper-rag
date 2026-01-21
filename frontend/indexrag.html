@@ -390,15 +390,22 @@
         if(selected.length===0){alert('Select a paper first');return;}
         const p=papers[selected[0]];
         addMsg('Explain: '+p.title,'user');
-        addMsg('Analyzing...','loading');
+        addMsg('AI is reading the paper...','loading');
+
         try{
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'explain_paper',paper_index:selected[0]})});
         const d=await r.json();
         removeLoading();
-        addMsg(d.explanation||'Error: '+(d.error||'Unknown'),'ai');
+
+        if(d.error) {
+            addMsg(d.error, 'ai');
+        } else {
+            addMsg(d.explanation||'Error: Unknown','ai');
+        }
+
         }catch(e){
         removeLoading();
-        addMsg('Error: '+e.message,'ai');
+        addMsg('Connection error: ' + e.message + '\n\n💡 Try again in a moment!','ai');
         }
         }
 
@@ -406,18 +413,24 @@
         if(selected.length<2){alert('Select at least 2 papers');return;}
         const titles = selected.map(i => papers[i].title).join(', ');
         addMsg('Compare: '+titles,'user');
-        addMsg('Comparing...','loading');
+        addMsg('🤖 AI is analyzing the papers...','loading');
+
         try{
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:selected})});
         const d=await r.json();
         removeLoading();
-        addMsg(d.comparison||'Error: '+(d.error||'Unknown'),'ai');
-        }catch(e){
-        removeLoading();
-        addMsg('Error: '+e.message,'ai');
-        }
+
+        if(d.error) {
+            addMsg(d.error, 'ai');
+        } else {
+            addMsg(d.comparison||'Error: Unknown','ai');
         }
 
+        }catch(e){
+        removeLoading();
+        addMsg('Connection error: ' + e.message + '\n\n Try again in a moment!','ai');
+        }
+        }
         function enableChat(){
         document.getElementById('chatInput').disabled=false;
         document.getElementById('sendBtn').disabled=false;
@@ -431,59 +444,71 @@
         if(!q)return;
         addMsg(q,'user');
         inp.value='';
-        addMsg('Searching...','loading');
+        addMsg('🔍 Searching our database...','loading');
+
         try{
         const payload = {action:'rag_search',query:q};
         if(selected.length > 0) {
             payload.relevant_papers = selected.slice(0,5);
         }
+
+        updateLoadingMsg('🤖 AI is analyzing results...');
+
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const d=await r.json();
         removeLoading();
 
-        // Add main answer
-        addMsg(d.answer||'Error: '+(d.error||'Unknown'),'ai');
-
-        // If papers were returned, add clickable links
-        if(d.papers && d.papers.length > 0) {
-            // Create a custom styled paper list
-            const paperListDiv = document.createElement('div');
-            paperListDiv.className = 'message ai-message';
-            paperListDiv.style.marginTop = '10px';
+        if(d.error) {
+            addMsg(d.error, 'ai');
+        } else {
+            addMsg(d.answer||'Error: Unknown','ai');
             
-            let html = '<div style="border-top: 2px solid #10b981; padding-top: 12px; margin-top: 8px;"><strong style="color: #fff;">📚 Referenced Papers:</strong></div>';
-            
-            d.papers.forEach((p, i) => {
-                html += `<div style="margin: 12px 0; padding: 10px; background: #2d2d2d; border-radius: 8px; border-left: 3px solid #10b981;">
-                    <div style="color: #e0e0e0; margin-bottom: 6px; font-weight: 500;">${i+1}. ${p.title}</div>
-                    <button onclick="selectPaper(${p.index}, '${p.title.replace(/'/g, "\\'")}'); return false;" 
-                            style="padding: 6px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
-                        ✓ Select This Paper
-                    </button>
-                </div>`;
-            });
-            
-            paperListDiv.innerHTML = html;
-            document.getElementById('chatBox').appendChild(paperListDiv);
-            document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+            // Add paper links if available
+            if(d.papers && d.papers.length > 0) {
+                const paperListDiv = document.createElement('div');
+                paperListDiv.className = 'message ai-message';
+                paperListDiv.style.marginTop = '10px';
+                
+                let html = '<div style="border-top: 2px solid #10b981; padding-top: 12px; margin-top: 8px;"><strong style="color: #fff;">📚 Referenced Papers:</strong></div>';
+                
+                d.papers.forEach((p, i) => {
+                    html += `<div style="margin: 12px 0; padding: 10px; background: #2d2d2d; border-radius: 8px; border-left: 3px solid #10b981;">
+                        <div style="color: #e0e0e0; margin-bottom: 6px; font-weight: 500;">${i+1}. ${p.title}</div>
+                        <button onclick="selectPaper(${p.index}, '${p.title.replace(/'/g, "\\'")}'); return false;" 
+                                style="padding: 6px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            ✓ Select This Paper
+                        </button>
+                    </div>`;
+                });
+                
+                paperListDiv.innerHTML = html;
+                document.getElementById('chatBox').appendChild(paperListDiv);
+                document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+            }
         }
 
         }catch(e){
         removeLoading();
-        addMsg('Error: '+e.message,'ai');
+        addMsg('Connection error: ' + e.message + '\n\n Please check your internet and try again!','ai');
         }
         }
 
         function selectPaper(index, title) {
-        if(!selected.includes(index)) {
-            selected.push(index);
-            updateSelected();
-            search();
-            addMsg('Selected: ' + title, 'ai');
-        } else {
-            addMsg('Already selected: ' + title, 'ai');
+            if(!selected.includes(index)) {
+                selected.push(index);
+                updateSelected();
+                search();
+                addMsg('Selected: ' + title, 'ai');
+            } else {
+                addMsg('Already selected: ' + title, 'ai');
+            }
         }
-    }
+        function updateLoadingMsg(text) {
+            const msgs = document.getElementsByClassName('loading-message');
+            if(msgs.length > 0) {
+                msgs[0].textContent = text;
+            }
+        }
         document.getElementById('searchInput').addEventListener('input',search);
         document.getElementById('chatInput').addEventListener('keypress',function(e){if(e.key==='Enter'&&!this.disabled)sendMsg();});
         loadPapers();
