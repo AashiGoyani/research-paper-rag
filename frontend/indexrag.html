@@ -155,9 +155,9 @@
         }
         .message {
             margin-bottom: 15px;
-            padding: 16px;
+            padding: 12px;
             border-radius: 8px;
-            line-height: 1.7;
+            line-height: 1.6;
             font-size: 14px;
         }
         .user-message {
@@ -165,14 +165,15 @@
             margin-left: 20%;
             border: 2px solid #0d9488;
             color: white;
+            padding: 10px 14px;
         }
         .ai-message {
             background: #3c3c3c;
             border: none;
             margin-right: 20%;
             color: #e0e0e0;
-            padding: 18px; 
-            line-height: 1.8; 
+            padding: 12px 16px;
+            line-height: 1.6; 
         }
         .ai-message h1, .ai-message h2, .ai-message h3 {
             color: #fff;
@@ -245,6 +246,7 @@
             text-align: center;
             font-style: italic;
             color: #ffd54f;
+            padding: 8px 12px;
         }
         .chat-input-container {
             display: flex;
@@ -413,7 +415,7 @@
         if(selected.length<2){alert('Select at least 2 papers');return;}
         const titles = selected.map(i => papers[i].title).join(', ');
         addMsg('Compare: '+titles,'user');
-        addMsg('🤖 AI is analyzing the papers...','loading');
+        addMsg('AI is analyzing the papers...','loading');
 
         try{
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'compare_papers',paper_indices:selected})});
@@ -444,7 +446,7 @@
         if(!q)return;
         addMsg(q,'user');
         inp.value='';
-        addMsg('🔍 Searching our database...','loading');
+        addMsg('Searching our database...','loading');
 
         try{
         const payload = {action:'rag_search',query:q};
@@ -452,7 +454,7 @@
             payload.relevant_papers = selected.slice(0,5);
         }
 
-        updateLoadingMsg('🤖 AI is analyzing results...');
+        updateLoadingMsg('AI is analyzing results...');
 
         const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const d=await r.json();
