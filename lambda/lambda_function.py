@@ -71,20 +71,19 @@ def call_gemini_api(prompt):
                 raise Exception("Unable to reach AI service. Please check your connection and try again.")
 
 def get_embedding(text):
-    api_key = os.environ.get('GOOGLE_API_KEY')
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={api_key}'
+    url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
     
-    data = json.dumps({
-        'content': {
-            'parts': [{'text': text}]
-        }
-    }).encode('utf-8')
+    data = json.dumps({"inputs": text}).encode('utf-8')
     
-    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    req = urllib.request.Request(
+        url, 
+        data=data, 
+        headers={'Content-Type': 'application/json'}
+    )
     
     with urllib.request.urlopen(req, timeout=30) as response:
         result = json.loads(response.read())
-        return np.array(result['embedding']['values'])
+        return np.array(result)
 
 def semantic_search(query_embedding, paper_embeddings, top_k=10):
     similarities = np.dot(paper_embeddings, query_embedding) / (
