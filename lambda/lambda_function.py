@@ -3,6 +3,8 @@ import boto3
 import os
 import urllib.request
 import numpy as np 
+from io import BytesIO
+
 
 s3 = boto3.client('s3')
 papers_cache = None
@@ -159,7 +161,8 @@ def lambda_handler(event, context):
                 print("Loading embeddings from S3...")
                 bucket = 'research-paper-rec'
                 embeddings_obj = s3.get_object(Bucket=bucket, Key='data/embeddings/paper_embeddings_10k.npy')
-                paper_embeddings = np.load(embeddings_obj['Body'])
+                embeddings_bytes = BytesIO(embeddings_obj['Body'].read())
+                paper_embeddings = np.load(embeddings_bytes)
                 
                 print("Getting query embedding...")
                 query_embedding = get_embedding(query)
