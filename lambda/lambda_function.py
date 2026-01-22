@@ -71,19 +71,42 @@ def call_gemini_api(prompt):
                 raise Exception("Unable to reach AI service. Please check your connection and try again.")
 
 def get_embedding(text):
+    import time
+    
     url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
     
     data = json.dumps({"inputs": text}).encode('utf-8')
     
-    req = urllib.request.Request(
-        url, 
-        data=data, 
-        headers={'Content-Type': 'application/json'}
-    )
+    max_retries = 3
+    retry_delay = 2
     
-    with urllib.request.urlopen(req, timeout=30) as response:
-        result = json.loads(response.read())
-        return np.array(result)
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(
+                url, 
+                data=data, 
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            with urllib.request.urlopen(req, timeout=30) as response:
+                result = json.loads(response.read())
+                return np.array(result)
+                
+        except urllib.error.HTTPError as e:
+            if e.code in [503, 410] and attempt < max_retries - 1:
+                print(f"Model loading, retry {attempt + 1}/{max_retries}")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+                continue
+            else:
+                raise Exception(f"Embedding API error: {e.code}")
+                
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+            else:
+                raise
 
 def semantic_search(query_embedding, paper_embeddings, top_k=10):
     similarities = np.dot(paper_embeddings, query_embedding) / (
