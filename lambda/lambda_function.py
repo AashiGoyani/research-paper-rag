@@ -95,6 +95,18 @@ def semantic_search(query_embedding, paper_embeddings, top_k=10):
 
 def lambda_handler(event, context):
     try:
+        # Handle CORS preflight
+        if event.get('httpMethod') == 'OPTIONS':
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                },
+                'body': ''
+            }
+        
         print(f"Event: {json.dumps(event)}")
         body = json.loads(event.get('body', '{}')) if event.get('httpMethod') == 'POST' else event
         action = body.get('action')
