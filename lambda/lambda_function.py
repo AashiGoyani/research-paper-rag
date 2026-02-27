@@ -72,7 +72,8 @@ def call_gemini_api(prompt):
 
 def get_embedding(text):
     hf_token = os.environ.get('HF_TOKEN')
-    url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"git add .
+
     
     req = urllib.request.Request(
         url,
