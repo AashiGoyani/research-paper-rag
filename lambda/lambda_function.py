@@ -130,18 +130,19 @@ def lambda_handler(event, context):
                 paper = papers[idx]
                 papers_text += f"\n\nPaper {i}:\nTitle: {paper['title_clean']}\nAbstract: {paper.get('abstract', '')[:400]}"
             
-            prompt = f"""Compare these {len(indices)} research papers:
+            prompt = f"""Compare these {len(indices)} research papers and format your response as an HTML table:
 
         {papers_text}
 
-        Provide a comprehensive comparison that includes:
-        1. **Main Similarities** - What do all these papers have in common?
-        2. **Key Differences** - How does each paper differ from the others?
-        3. **Strengths & Weaknesses** - What are the unique strengths of each paper?
-        4. **Best For** - Which paper is best for beginners vs experts?
-        5. **Reading Order** - In what order should someone read these papers?
+        Return a clean HTML table with these columns:
+        - Aspect
+        - {' | '.join([f'Paper {i+1}' for i in range(len(indices))])}
 
-        Make it clear and structured."""
+        Include these rows: Main Topic, Key Methods, Strengths, Weaknesses, Best For, Difficulty Level.
+
+        After the table, add a 2-3 sentence recommendation on which paper to read first.
+        
+        Return only HTML, no markdown."""
             
             comparison = call_gemini_api(prompt)
             return {'statusCode': 200, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({'comparison': comparison})}
