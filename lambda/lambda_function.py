@@ -72,8 +72,7 @@ def call_gemini_api(prompt):
 
 def get_embedding(text):
     hf_token = os.environ.get('HF_TOKEN')
-    url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"git add .
-
+    url = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
     
     req = urllib.request.Request(
         url,
@@ -87,7 +86,7 @@ def get_embedding(text):
     with urllib.request.urlopen(req, timeout=30) as response:
         result = json.loads(response.read().decode('utf-8'))
         return result[0]
-
+    
 def semantic_search(query_embedding, paper_embeddings, top_k=10):
     similarities = np.dot(paper_embeddings, query_embedding) / (
         np.linalg.norm(paper_embeddings, axis=1) * np.linalg.norm(query_embedding)
