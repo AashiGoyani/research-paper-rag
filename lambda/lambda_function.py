@@ -136,7 +136,7 @@ def lambda_handler(event, context):
 
         Return a clean HTML table with these columns:
         - Aspect
-        - {' | '.join([f'Paper {i+1}' for i in range(len(indices))])}
+        - {' | '.join([papers[idx]['title_clean'][:30] + '...' for idx in indices])}
 
         Include these rows: Main Topic, Key Methods, Strengths, Weaknesses, Best For, Difficulty Level.
 
