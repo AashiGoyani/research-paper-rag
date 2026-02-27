@@ -54,24 +54,6 @@ Response to User
 
 ---
 
-## Tech Stack
-
-| Category | Technology |
-|----------|-----------|
-| Cloud Compute | AWS Lambda |
-| Storage | AWS S3 |
-| API | AWS API Gateway |
-| Monitoring | AWS CloudWatch |
-| Embedding Generation | AWS SageMaker (one-time) |
-| Query Embeddings | HuggingFace Inference API |
-| LLM | Google Gemini 2.5 Flash |
-| ML Model | all-MiniLM-L6-v2 (384-dim) |
-| CI/CD | GitHub Actions |
-| Frontend | HTML / CSS / JavaScript |
-| Data Processing | Python, NumPy, SentenceTransformers |
-
----
-
 ## Skills Used
 
 **Cloud & DevOps**
