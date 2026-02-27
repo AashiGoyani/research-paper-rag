@@ -70,10 +70,22 @@ def call_gemini_api(prompt):
             else:
                 raise Exception("Unable to reach AI service. Please check your connection and try again.")
 
-def get_embedding(text):
-    from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    return model.encode(text).tolist()
+ddef get_embedding(text):
+    hf_token = os.environ.get('HF_TOKEN')
+    url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    
+    req = urllib.request.Request(
+        url,
+        data=json.dumps({"inputs": text}).encode('utf-8'),
+        headers={
+            'Authorization': f'Bearer {hf_token}',
+            'Content-Type': 'application/json'
+        }
+    )
+    
+    with urllib.request.urlopen(req, timeout=30) as response:
+        result = json.loads(response.read().decode('utf-8'))
+        return result[0]
 
 def semantic_search(query_embedding, paper_embeddings, top_k=10):
     similarities = np.dot(paper_embeddings, query_embedding) / (

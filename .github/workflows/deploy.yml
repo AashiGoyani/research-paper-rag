@@ -28,10 +28,9 @@ jobs:
     - name: Package Lambda function
       run: |
         cd lambda
-        pip install sentence-transformers -t .
-        zip -r lambda-deploy.zip .
+        zip -r lambda-deploy.zip lambda_function.py
         echo "Lambda packaged"
-        
+    
     - name: Update Lambda function
       run: |
         aws lambda update-function-code \
