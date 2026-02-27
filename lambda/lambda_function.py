@@ -70,7 +70,7 @@ def call_gemini_api(prompt):
             else:
                 raise Exception("Unable to reach AI service. Please check your connection and try again.")
 
-ddef get_embedding(text):
+def get_embedding(text):
     hf_token = os.environ.get('HF_TOKEN')
     url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
     
