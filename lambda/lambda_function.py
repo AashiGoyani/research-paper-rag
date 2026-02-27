@@ -85,7 +85,7 @@ def get_embedding(text):
     
     with urllib.request.urlopen(req, timeout=30) as response:
         result = json.loads(response.read().decode('utf-8'))
-        return np.mean(result[0], axis=0).tolist()
+        return result
 
     
 def semantic_search(query_embedding, paper_embeddings, top_k=10):
